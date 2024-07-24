@@ -1,9 +1,7 @@
-using System;
 using System.Collections.Generic;
 using Model;
 using Model.Runtime.Projectiles;
 using UnityEngine;
-using UnityEngine.PlayerLoop;
 
 namespace UnitBrains.Player
 {
@@ -23,7 +21,10 @@ namespace UnitBrains.Player
         private float _cooldownTime = 0f;
         private bool _overheated;
         private ThirdUnitState _state;
-        
+        private List<Vector2Int> TargetsOutOfRange = new List<Vector2Int>();
+        private float _lastActionTime;
+
+
         public static int UnitID = 0;
         public int UnitNumber = UnitID++;
         public int MaximumTargets = 3;
@@ -49,33 +50,50 @@ namespace UnitBrains.Player
                     Debug.Log(_temperature + 1);
                 }
                 IncreaseTemperature();
+                
             }
         }
         
         protected override List<Vector2Int> SelectTargets()
         {
-            List<Vector2Int> result = new List<Vector2Int>(); 
-            _currentTarget.Clear(); 
 
-            foreach (var target in GetAllTargets())
+            List<Vector2Int> result = new List<Vector2Int>();
+            Vector2Int TargetPosition;
+            TargetsOutOfRange.Clear();
+
+            foreach (Vector2Int target in GetAllTargets())
             {
-                _currentTarget.Add(target);
+                TargetsOutOfRange.Add(target);
             }
-
-            if (_currentTarget.Count == 0)
+            if (TargetsOutOfRange.Count == 0)
             {
-                _currentTarget.Add(runtimeModel.RoMap.Bases[IsPlayerUnitBrain ? RuntimeModel.BotPlayerId : RuntimeModel.PlayerId]);
-            }
-
-            SortByDistanceToOwnBase(_currentTarget);
-
-            int currentUnitNumber = UnitNumber % _currentTarget.Count;
-            
-            if (_currentTarget.Count > currentUnitNumber && IsTargetInRange(_currentTarget[currentUnitNumber]))
+                int enemyBaseId = IsPlayerUnitBrain ? RuntimeModel.BotPlayerId : RuntimeModel.PlayerId;
+                    Vector2Int enemyBase = runtimeModel.RoMap.Bases[enemyBaseId];
+                    TargetsOutOfRange.Add(enemyBase);
+                }
+            else
             {
-                result.Add(_currentTarget[currentUnitNumber]);
-            }
+                SortByDistanceToOwnBase(TargetsOutOfRange);
+                int TargetIndex = UnitNumber % MaximumTargets;
+                if (TargetIndex > (TargetsOutOfRange.Count - 1))
+                {
+                    TargetPosition = TargetsOutOfRange[0];
+                }
+                else
+                {
+                    if (TargetIndex == 0)
+                    {
+                        TargetPosition = TargetsOutOfRange[TargetIndex];
+                    }
+                    else
+                    {
+                        TargetPosition = TargetsOutOfRange[TargetIndex - 1];
+                    }
 
+                }
+                if (IsTargetInRange(TargetPosition))
+                    result.Add(TargetPosition);
+            }
             return result;
         }
         
@@ -93,8 +111,8 @@ namespace UnitBrains.Player
 
         public override void Update(float deltaTime, float time)
         {
-            ChangeMode();
             base.Update(deltaTime, time);
+            ChangeMode();
         }
 
         private void ChangeMode()
