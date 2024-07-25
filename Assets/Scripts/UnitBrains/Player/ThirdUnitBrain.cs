@@ -5,6 +5,7 @@ using UnityEngine;
 
 namespace UnitBrains.Player
 {
+    //Файл после проверки работоспособности, все отлично так же отрабатывает, как на видео
     public enum ThirdUnitState
     {
         Attack,
